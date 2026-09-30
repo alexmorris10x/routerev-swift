@@ -168,6 +168,16 @@ final class ClientTests: XCTestCase {
         XCTAssertNil(Event.sanitize([:]))
     }
 
+    func testRepeatedIdentifySendsOneEvent() async {
+        let transport = MockTransport([])
+        let client = makeClient(transport: transport)
+        for _ in 0..<5 { await client.identify("user_1", at: Date()) }
+        await client.identify("user_2", at: Date())
+        await client.flush()
+        let identifies = transport.sentEvents.filter { $0["type"] as? String == "identify" }
+        XCTAssertEqual(identifies.compactMap { $0["userId"] as? String }, ["user_1", "user_2"])
+    }
+
     func testResetClearsUserButKeepsInstall() async {
         let client = makeClient()
         let install = client.installId

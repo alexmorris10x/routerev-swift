@@ -84,6 +84,8 @@ actor Client {
 
     func identify(_ id: String, at date: Date) {
         let trimmed = String(id.prefix(128))
+        // Apps often identify on every launch or view update; later events already carry the user ID
+        guard trimmed != userId else { return }
         userId = trimmed
         store.saveValue("userId", trimmed)
         record(.identify, name: nil, props: [:], at: date)
