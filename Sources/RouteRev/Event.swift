@@ -51,6 +51,8 @@ struct Event: Codable, Equatable, Sendable {
     let timezone: String?
     let appVersion: String?
     let props: [String: RouteRevValue]?
+    /// Apple Search Ads attribution token, on the install's first event only; the collector resolves it
+    var attributionToken: String? = nil
 
     enum Kind: String {
         case screen, goal, identify

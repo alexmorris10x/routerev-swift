@@ -27,6 +27,9 @@ RouteRev.goal("sign_up", ["method": "apple"])    // goals and funnels
 RouteRev.identify(user.id)                       // joins this install with the user's web visits
 RouteRev.reset()                                 // on sign-out
 
+// "How did you hear about us?" in onboarding: the answer becomes this install's source
+RouteRev.acquisitionSurvey(.reddit)             // AcquisitionSource.allCases + .label build the options
+
 // Link RevenueCat purchases to this install (RouteRev reads it from the webhook):
 Purchases.shared.attribution.setAttributes(["rr_install_id": RouteRev.installId ?? ""])
 ```
@@ -47,6 +50,7 @@ Convert `[String: Any]` properties to `[String: RouteRevValue]` (strings, number
 
 ## Behavior
 
+- **First open** sends a `first_open` goal once per install. On a device it carries Apple's Search Ads attribution token (AdServices), which RouteRev resolves into the install's campaign and keyword; turn it off with `Options.searchAdsAttribution = false`.
 - **Install ID** in the Keychain, so it survives reinstalls; exposed as `RouteRev.installId`.
 - **Sessions** end after 30 minutes without events.
 - **Queue** on disk; sent every 15 s, at 20 events, and when the app goes to the background. Network and 5xx errors retry with backoff (5 s doubling to 5 min). A batch the collector rejects as invalid (400/404/413/422) is dropped so it can't block the queue. At most 1,000 unsent events are kept.

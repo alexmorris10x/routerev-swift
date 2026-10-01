@@ -188,3 +188,49 @@ final class ClientTests: XCTestCase {
         XCTAssertEqual(client.installId, install)
     }
 }
+
+final class AttributionTests: XCTestCase {
+    private func makeClient(store: RouteRevStore, transport: MockTransport) -> Client {
+        let config = Client.Config(
+            key: "pk_test_123", endpoint: URL(string: "https://e.example.com/e")!, bundleId: "com.example.app",
+            appVersion: "1.4.0", flushInterval: 3600, batchSize: 50, maxQueued: 1000
+        )
+        return Client(config: config, store: store, transport: transport)
+    }
+
+    func testFirstOpenCarriesTheSearchAdsTokenOncePerInstall() async throws {
+        let store = MemoryStore()
+        let transport = MockTransport([])
+        let client = makeClient(store: store, transport: transport)
+        let sent = await client.recordFirstOpen(attributionToken: "token-abc", at: Date())
+        XCTAssertTrue(sent)
+        await client.record(.screen, name: "Home", props: [:], at: Date())
+
+        let relaunched = makeClient(store: store, transport: transport)
+        let sentAgain = await relaunched.recordFirstOpen(attributionToken: "token-def", at: Date())
+        XCTAssertFalse(sentAgain, "first_open is once per install")
+
+        await client.flush()
+        let events = transport.sentEvents
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events[0]["name"] as? String, "first_open")
+        XCTAssertEqual(events[0]["attributionToken"] as? String, "token-abc")
+        XCTAssertNil(events[1]["attributionToken"], "only the first event carries the token")
+    }
+
+    func testFirstOpenWithoutTokenOmitsTheField() async throws {
+        let transport = MockTransport([])
+        let client = makeClient(store: MemoryStore(), transport: transport)
+        await client.recordFirstOpen(attributionToken: nil, at: Date())
+        await client.flush()
+        let body = try XCTUnwrap(transport.bodies.first)
+        XCTAssertFalse(String(decoding: body, as: UTF8.self).contains("attributionToken"))
+    }
+
+    func testSurveyAnswersUseTheCampaignConvention() {
+        XCTAssertEqual(AcquisitionSource.appStoreSearch.rawValue, "app_store_search")
+        for source in AcquisitionSource.allCases {
+            XCTAssertNotNil(source.rawValue.range(of: "^[a-z0-9][a-z0-9_-]*$", options: .regularExpression), source.rawValue)
+        }
+    }
+}

@@ -2,6 +2,9 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 #endif
+#if canImport(AdServices)
+import AdServices
+#endif
 
 /// First-party, revenue-attributed analytics for iOS apps.
 ///
@@ -25,6 +28,9 @@ public enum RouteRev {
         public var maxQueuedEvents: Int = 1000
         /// Set false to keep events on the device (for example, until the user consents).
         public var enabled: Bool = true
+        /// Sends Apple's Search Ads attribution token with the install's first event, so installs
+        /// from Search Ads are credited to their campaign and keyword. No IDFA or ATT prompt involved.
+        public var searchAdsAttribution: Bool = true
 
         public init() {}
     }
@@ -43,6 +49,17 @@ public enum RouteRev {
         )
         let client = Client(config: config, store: DeviceStore(), transport: URLSessionTransport())
         install(client, enabled: options.enabled)
+        let launch = Date()
+        let searchAds = options.searchAdsAttribution
+        Task.detached(priority: .utility) {
+            await client.recordFirstOpen(attributionToken: searchAds ? searchAdsToken() : nil, at: launch)
+        }
+    }
+
+    /// Records the answer to "How did you hear about us?" as the install's source.
+    /// Use the answers in `AcquisitionSource` so they match the campaign naming convention.
+    public static func acquisitionSurvey(_ answer: AcquisitionSource) {
+        goal("acquisition_survey", ["answer": .string(answer.rawValue)])
     }
 
     /// Records a screen view. Screens appear under "Top pages" as `/ScreenName`.
@@ -154,6 +171,16 @@ public enum RouteRev {
         }
     }
     #endif
+
+    /// Apple's attribution token (iOS 14.3+); nil on the simulator, macOS, or when AdServices fails.
+    static func searchAdsToken() -> String? {
+        #if canImport(AdServices) && os(iOS) && !targetEnvironment(simulator)
+        if #available(iOS 14.3, *) {
+            return try? AAAttribution.attributionToken()
+        }
+        #endif
+        return nil
+    }
 
     private static func send(_ kind: Event.Kind, name: String, props: [String: RouteRevValue]) {
         guard !name.isEmpty, let client = state.client else { return }

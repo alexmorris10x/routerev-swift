@@ -82,6 +82,20 @@ actor Client {
         }
     }
 
+    /// Records `first_open` once per install, carrying the Apple Search Ads token when there is one.
+    /// Returns false when this install already sent it.
+    @discardableResult
+    func recordFirstOpen(attributionToken: String?, at date: Date) -> Bool {
+        guard store.loadValue("firstOpenSent") == nil else { return false }
+        store.saveValue("firstOpenSent", "1")
+        record(.goal, name: "first_open", props: [:], at: date)
+        if let token = attributionToken, !token.isEmpty, token.count <= 4096, let last = queue.indices.last {
+            queue[last].attributionToken = token
+            store.saveQueue(queue)
+        }
+        return true
+    }
+
     func identify(_ id: String, at date: Date) {
         let trimmed = String(id.prefix(128))
         // Apps often identify on every launch or view update; later events already carry the user ID
