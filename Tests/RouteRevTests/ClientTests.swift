@@ -216,6 +216,7 @@ final class AttributionTests: XCTestCase {
         XCTAssertEqual(events[0]["name"] as? String, "first_open")
         XCTAssertEqual(events[0]["attributionToken"] as? String, "token-abc")
         XCTAssertNil(events[1]["attributionToken"], "only the first event carries the token")
+        XCTAssertEqual(events[0]["id"] as? String, "fo_\(client.installId)", "a repeat first_open dedupes at the collector")
     }
 
     func testFirstOpenWithoutTokenOmitsTheField() async throws {

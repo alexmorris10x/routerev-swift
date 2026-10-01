@@ -55,9 +55,9 @@ actor Client {
 
     // MARK: Events
 
-    func record(_ kind: Event.Kind, name: String?, props: [String: RouteRevValue], at date: Date) {
+    func record(_ kind: Event.Kind, name: String?, props: [String: RouteRevValue], at date: Date, id: String? = nil) {
         let event = Event(
-            id: UUID().uuidString.lowercased(),
+            id: id ?? UUID().uuidString.lowercased(),
             type: kind.rawValue,
             name: name.map { String($0.prefix(120)) },
             ts: Event.timestamp(date),
@@ -88,7 +88,9 @@ actor Client {
     func recordFirstOpen(attributionToken: String?, at date: Date) -> Bool {
         guard store.loadValue("firstOpenSent") == nil else { return false }
         store.saveValue("firstOpenSent", "1")
-        record(.goal, name: "first_open", props: [:], at: date)
+        // A fixed ID per install: if the app is killed before the flag above is saved and this runs
+        // again, the collector drops the repeat as a duplicate
+        record(.goal, name: "first_open", props: [:], at: date, id: "fo_\(installId)")
         if let token = attributionToken, !token.isEmpty, token.count <= 4096, let last = queue.indices.last {
             queue[last].attributionToken = token
             store.saveQueue(queue)
