@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "RouteRev", targets: ["RouteRev"]),
     ],
     targets: [
-        .target(name: "RouteRev"),
+        .target(name: "RouteRev", resources: [.copy("PrivacyInfo.xcprivacy")]),
         .testTarget(name: "RouteRevTests", dependencies: ["RouteRev"]),
     ]
 )

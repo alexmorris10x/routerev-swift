@@ -18,6 +18,8 @@ actor Client {
     private let store: RouteRevStore
     private let transport: RouteRevTransport
     private let now: @Sendable () -> Date
+    /// Read before every request: while it returns false, nothing is sent.
+    private let isEnabled: @Sendable () -> Bool
 
     nonisolated let installId: String
     private var userId: String?
@@ -30,11 +32,16 @@ actor Client {
     private var screenWidth: Int?
     private var flushTask: Task<Void, Never>?
 
-    init(config: Config, store: RouteRevStore, transport: RouteRevTransport, now: @escaping @Sendable () -> Date = { Date() }) {
+    init(
+        config: Config, store: RouteRevStore, transport: RouteRevTransport,
+        now: @escaping @Sendable () -> Date = { Date() },
+        isEnabled: @escaping @Sendable () -> Bool = { true }
+    ) {
         self.config = config
         self.store = store
         self.transport = transport
         self.now = now
+        self.isEnabled = isEnabled
 
         if let existing = store.loadInstallId() {
             installId = existing
@@ -157,13 +164,14 @@ actor Client {
 
     /// Sends queued events in batches. Keeps them on network or server errors;
     /// drops a batch the collector rejects as invalid so one bad event can't block the queue.
+    /// Sends nothing while collection is disabled; the queue waits on the device.
     func flush() async {
-        guard !isFlushing, !queue.isEmpty else { return }
+        guard isEnabled(), !isFlushing, !queue.isEmpty else { return }
         if let retryAfter, now() < retryAfter { return }
         isFlushing = true
         defer { isFlushing = false }
 
-        while !queue.isEmpty {
+        while !queue.isEmpty, isEnabled() {
             let batch = Array(queue.prefix(min(config.batchSize, 100)))
             let status: Int
             do {

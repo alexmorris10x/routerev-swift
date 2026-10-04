@@ -3,22 +3,32 @@ import XCTest
 
 /// Records requests and answers with scripted status codes (or a thrown network error).
 final class MockTransport: RouteRevTransport, @unchecked Sendable {
+    // Responses and bodies are accessed only inside synchronous locked methods.
     private let lock = NSLock()
     private var responses: [Result<Int, Error>]
-    private(set) var bodies: [Data] = []
+    private var capturedBodies: [Data] = []
 
     init(_ responses: [Result<Int, Error>]) { self.responses = responses }
 
     func send(_ body: Data, to endpoint: URL) async throws -> Int {
+        try capture(body)
+    }
+
+    private func capture(_ body: Data) throws -> Int {
         lock.lock(); defer { lock.unlock() }
-        bodies.append(body)
+        capturedBodies.append(body)
         let next = responses.isEmpty ? .success(202) : responses.removeFirst()
         return try next.get()
     }
 
+    var bodies: [Data] {
+        lock.lock(); defer { lock.unlock() }
+        return capturedBodies
+    }
+
     var sentEvents: [[String: Any]] {
         lock.lock(); defer { lock.unlock() }
-        return bodies.flatMap { body -> [[String: Any]] in
+        return capturedBodies.flatMap { body -> [[String: Any]] in
             let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any]
             return json?["events"] as? [[String: Any]] ?? []
         }
@@ -27,6 +37,7 @@ final class MockTransport: RouteRevTransport, @unchecked Sendable {
 
 /// A clock tests can move forward.
 final class TestClock: @unchecked Sendable {
+    // Every read and mutation of current is synchronized with the same lock.
     private let lock = NSLock()
     private var current = Date(timeIntervalSince1970: 1_790_000_000)
     var now: Date { lock.lock(); defer { lock.unlock() }; return current }

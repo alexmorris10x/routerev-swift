@@ -16,6 +16,8 @@ protocol RouteRevStore: Sendable {
 /// Install ID in the Keychain (survives reinstall on the same device), small values in
 /// UserDefaults, and the queue as a JSON file in Application Support.
 final class DeviceStore: RouteRevStore, @unchecked Sendable {
+    // Configuration is immutable; UserDefaults/Keychain APIs synchronize their own
+    // access, and this lock serializes every read/write of the queue file.
     private let service = "routerev"
     private let account = "install-id"
     private let defaults: UserDefaults
@@ -95,6 +97,7 @@ final class DeviceStore: RouteRevStore, @unchecked Sendable {
 
 /// In-memory store for tests and previews.
 final class MemoryStore: RouteRevStore, @unchecked Sendable {
+    // All mutable state is private and accessed only through locked synchronous methods.
     private let lock = NSLock()
     private var installId: String?
     private var values: [String: String] = [:]

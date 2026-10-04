@@ -1,4 +1,4 @@
-# RouteRev for iOS
+# Getting started with RouteRev
 
 Swift client for [RouteRev](https://github.com/alexmorris10x/routerev): revenue-attributed analytics with no dependencies. iOS 15+ and macOS 12+.
 
@@ -13,7 +13,7 @@ packages:
     from: "0.3.0"
 ```
 
-Use the latest published tag. See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+Use the latest published tag. See the package's `CHANGELOG.md` for what changed in each version.
 
 ## Configure at launch
 
@@ -104,7 +104,7 @@ The helper returns `["rr_install_id": installId]` after configure, or an empty d
 - **Sessions:** roll over after 30 minutes without events.
 - **Delivery:** queues JSON in Application Support; flushes every 15 seconds, at 20 events, and on backgrounding. Network/server errors back off from **10 seconds**, doubling up to 5 minutes. Invalid batches (400/404/413/422) are dropped. The default queue limit is 1,000 unsent events; oldest events beyond the limit are dropped.
 - **Limits:** names up to 120 characters, 20 properties, keys up to 64 characters and strings up to 500 characters.
-- **Enabled flag:** `Options.enabled = false` or `RouteRev.isEnabled = false` sends nothing at all until collection is turned on (see [Consent](#consent)). `reset()` still works while disabled, since it only clears local state.
+- **Enabled flag:** `Options.enabled = false` or `RouteRev.isEnabled = false` sends nothing at all until collection is turned on (see <doc:GettingStarted#Consent>). `reset()` still works while disabled, since it only clears local state.
 
 `Options` also exposes `flushInterval`, `batchSize` and `maxQueuedEvents`. `await RouteRev.flush()` requests delivery now.
 
@@ -145,7 +145,7 @@ The package never reads StoreKit, but linking RevenueCat with `rr_install_id` le
 - Match the successful sign-up goal name to the product's `signupGoal`.
 - Set the RevenueCat install attribute after configuration, if using RevenueCat.
 - If you ask for analytics consent, configure with `Options.enabled` from the stored answer.
-- Complete the App Store privacy label (see [the table above](#what-to-put-in-your-app-store-privacy-label)).
+- Complete the App Store privacy label (see <doc:GettingStarted#What-to-put-in-your-App-Store-privacy-label>).
 
 ## With ios-boilerplate
 
